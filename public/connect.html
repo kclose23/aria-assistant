@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ARIA — Connect Calendars</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f0f1a;
+      color: #f0f0f0;
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      width: 90%;
+      max-width: 600px;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    h1 { font-size: 2.5rem; margin-bottom: 10px; }
+    .subtitle { color: #888; margin-bottom: 50px; }
+    .card {
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    .card h2 { margin-bottom: 10px; font-size: 1.2rem; }
+    .card p { color: #888; font-size: 0.9rem; margin-bottom: 20px; }
+    .connect-btn {
+      display: inline-block;
+      padding: 12px 30px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .work-btn {
+      background: linear-gradient(135deg, #6c63ff, #3ecfcf);
+      color: #fff;
+    }
+    .family-btn {
+      background: linear-gradient(135deg, #ff9f43, #ff6b6b);
+      color: #fff;
+    }
+    .connect-btn:hover { opacity: 0.85; }
+    .back { margin-top: 40px; }
+    .back a { color: #3ecfcf; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔗 Connect Calendars</h1>
+    <p class="subtitle">Authorize ARIA to add events to your calendars</p>
+
+    <div class="card">
+      <h2>💼 Work Calendar</h2>
+      <p>Meetings, calls, deadlines, travel, and work tasks</p>
+      <a href="/.netlify/functions/auth-work" class="connect-btn work-btn">
+        Connect Work Calendar
+      </a>
+    </div>
+
+    <div class="card">
+      <h2>👨‍👩‍👧 Family Calendar</h2>
+      <p>Kids activities, personal errands, family events, appointments</p>
+      <a href="/.netlify/functions/auth-family" class="connect-btn family-btn">
+        Connect Family Calendar
+      </a>
+    </div>
+
+    <div class="back">
+      <a href="/">← Back to ARIA</a>
+    </div>
+  </div>
+</body>
+</html>
