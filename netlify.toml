@@ -1,0 +1,25 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+```
+
+4. Click **"Commit changes"** → **"Commit changes"** again
+
+---
+
+That's all the files! Your repo should now have:
+```
+public/
+  index.html
+  style.css
+  script.js
+netlify/
+  functions/
+    ask.js
+netlify.toml
+README.md
