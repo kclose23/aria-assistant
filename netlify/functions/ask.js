@@ -20,9 +20,12 @@ exports.handler = async function(event) {
     return { statusCode: 500, body: JSON.stringify({ error: 'Gemini API key not configured' }) };
   }
 
-  const now = new Date();
-  const prompt = `
-You are ARIA, a smart productivity assistant. Today's date and time is: ${now.toISOString()} (Mountain Time, Utah).
+ const now = new Date();
+const mtOffset = -7; // Mountain Time (MDT, UTC-7)
+const mtNow = new Date(now.getTime() + mtOffset * 60 * 60 * 1000);
+const prompt = `
+You are ARIA, a smart productivity assistant. Today's date and time is: ${mtNow.toISOString().replace('Z','')} Mountain Time (Utah, UTC-7).
+When generating startISO and endISO times, always use Mountain Time — do NOT convert to UTC.
 The user's name is Kyler.
 
 A user just said the following by voice:
