@@ -97,6 +97,16 @@ function showResult(parsed) {
   const icon = icons[parsed.type] || '📋';
   resultText.textContent = `${icon} ${parsed.confirmation}`;
   resultBox.classList.remove('hidden');
+
+  const calendarLinkBox = document.getElementById('calendarLinkBox');
+  const calendarLink = document.getElementById('calendarLink');
+
+  if (parsed.calendarLink) {
+    calendarLink.href = parsed.calendarLink;
+    calendarLinkBox.classList.remove('hidden');
+  } else {
+    calendarLinkBox.classList.add('hidden');
+  }
 }
 
 confirmBtn.addEventListener('click', () => {
