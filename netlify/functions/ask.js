@@ -20,12 +20,21 @@ exports.handler = async function(event) {
     return { statusCode: 500, body: JSON.stringify({ error: 'Gemini API key not configured' }) };
   }
 
- const now = new Date();
-const mtOffset = -7; // Mountain Time (MDT, UTC-7)
-const mtNow = new Date(now.getTime() + mtOffset * 60 * 60 * 1000);
+const now = new Date();
 const prompt = `
-You are ARIA, a smart productivity assistant. Today's date and time is: ${mtNow.toISOString().replace('Z','')} Mountain Time (Utah, UTC-7).
-When generating startISO and endISO times, always use Mountain Time — do NOT convert to UTC.
+You are ARIA, a smart productivity assistant. 
+The user is located in Salt Lake City, Utah (Mountain Time, UTC-6 during daylight saving which is currently active).
+The current date is: ${now.toLocaleDateString('en-US', {timeZone: 'America/Denver', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}
+The current time is: ${now.toLocaleTimeString('en-US', {timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit'})}
+Today is ${now.toLocaleDateString('en-US', {timeZone: 'America/Denver', weekday: 'long'})}.
+Monday is ${new Date(now.getTime()).toLocaleDateString('en-US', {timeZone: 'America/Denver'})}.
+
+CRITICAL TIMEZONE RULES:
+- All times the user says are in Mountain Time (America/Denver, currently UTC-6)
+- When generating startISO and endISO, append "-06:00" at the end NOT "Z" or "+00:00"
+- Example: if user says "Monday at 2pm", output startISO as "2026-03-16T14:00:00-06:00"
+- NEVER output UTC times. ALWAYS use -06:00 offset.
+- Today is Saturday March 14. Monday = March 16. Tuesday = March 17.
 The user's name is Kyler.
 
 A user just said the following by voice:
