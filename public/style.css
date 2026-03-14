@@ -118,5 +118,24 @@ header .subtitle {
   opacity: 0.85;
 }
 .hidden {
+  .connect-link {
+  display: inline-block;
+  margin-top: 10px;
+  color: #3ecfcf;
+  font-size: 0.85rem;
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.connect-link:hover { opacity: 1; }
+
+.calendar-link {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: #3ecfcf;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.calendar-link:hover { text-decoration: underline; }
   display: none;
 }
