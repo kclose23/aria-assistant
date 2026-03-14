@@ -20,16 +20,39 @@ exports.handler = async function(event) {
     return { statusCode: 500, body: JSON.stringify({ error: 'Gemini API key not configured' }) };
   }
 
+  const now = new Date();
   const prompt = `
-You are ARIA, a smart productivity assistant. A user just said the following by voice:
+You are ARIA, a smart productivity assistant. Today's date and time is: ${now.toISOString()} (Mountain Time, Utah).
+The user's name is Kyler.
+
+A user just said the following by voice:
 "${text}"
 
 Your job is to:
 1. Identify what TYPE of action this is. Choose ONE of: REMINDER, CALENDAR, EMAIL, TASK, BRAIN_DUMP
 2. Extract the key details (who, what, when, where if relevant)
-3. Respond with a short, friendly one-sentence confirmation of what you will do
+3. If it's a CALENDAR event, determine which calendar it belongs to:
+   - "work" calendar: meetings, calls, client appointments, travel, conferences, deadlines, work tasks
+   - "family" calendar: kids activities, school events, family events, holidays, personal errands, personal to-dos, medical appointments
+   - "ask" if genuinely ambiguous
+4. If it's a CALENDAR event, extract a proper start datetime in ISO 8601 format based on today's date
+5. Respond with a short friendly confirmation
 
-Reply in this exact JSON format:
+Reply in this exact JSON format with no extra text:
+{
+  "type": "CALENDAR",
+  "details": {
+    "what": "dentist appointment",
+    "when": "Tuesday at 2pm",
+    "who": "",
+    "calendarType": "family",
+    "startISO": "2026-03-17T14:00:00",
+    "endISO": "2026-03-17T15:00:00"
+  },
+  "confirmation": "📅 Got it! I'll add your dentist appointment to your Family Calendar on Tuesday at 2pm."
+}
+
+For non-calendar types use:
 {
   "type": "REMINDER",
   "details": {
@@ -39,6 +62,7 @@ Reply in this exact JSON format:
   },
   "confirmation": "⏰ Got it! I'll remind you to call John tomorrow at 2pm."
 }
+
 Only return the JSON. No extra text.
 `;
 
@@ -64,6 +88,33 @@ Only return the JSON. No extra text.
     const raw = data.candidates[0].content.parts[0].text;
     const cleaned = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned);
+
+    // If it's a calendar event, add it automatically
+    if (parsed.type === 'CALENDAR' && parsed.details?.calendarType !== 'ask') {
+      const calendarType = parsed.details.calendarType;
+      const baseUrl = process.env.URL || 'https://sprightly-lebkuchen-41b633.netlify.app';
+
+      const calRes = await fetch(`${baseUrl}/.netlify/functions/calendar-add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          summary: parsed.details.what,
+          description: `Added by ARIA from voice: "${text}"`,
+          start: parsed.details.startISO,
+          end: parsed.details.endISO,
+          calendarType
+        })
+      });
+
+      const calData = await calRes.json();
+
+      if (calData.success) {
+        parsed.confirmation = `📅 Done! "${parsed.details.what}" has been added to your ${calendarType === 'work' ? '💼 Work' : '👨‍👩‍👧 Family'} Calendar.`;
+        parsed.calendarLink = calData.eventLink;
+      } else {
+        parsed.confirmation = `⚠️ I understood the event but couldn't add it to your calendar yet. Make sure your calendar is connected.`;
+      }
+    }
 
     return {
       statusCode: 200,
