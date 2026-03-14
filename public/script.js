@@ -120,4 +120,152 @@ async function handleFinalTranscript(text) {
   try {
     var response = await fetch('/.netlify/functions/ask', {
       method: 'POST',
-      headers: { 'Con
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text })
+    });
+
+    if (!response.ok) throw new Error('Server error: ' + response.status);
+    var parsed = await response.json();
+    console.log('ARIA response:', JSON.stringify(parsed));
+
+    if (parsed.type === 'EMAIL' && parsed.details) {
+      showEmailDraft(parsed);
+    } else {
+      showResult(parsed);
+    }
+  } catch (err) {
+    resultText.textContent = '⚠️ Something went wrong. Please try again.';
+    resultBox.classList.remove('hidden');
+    console.error(err);
+  }
+
+  micStatus.textContent = 'Tap to speak';
+  processingCommand = false;
+  manualInput.disabled = false;
+  manualSubmit.disabled = false;
+}
+
+// --- Show result ---
+function showResult(parsed) {
+  var icons = {
+    REMINDER: '⏰',
+    CALENDAR: '📅',
+    EMAIL: '✉️',
+    TASK: '✅',
+    BRAIN_DUMP: '🧠'
+  };
+  var icon = icons[parsed.type] || '📋';
+  resultText.textContent = icon + ' ' + parsed.confirmation;
+  resultBox.classList.remove('hidden');
+
+  var calendarLinkBox = document.getElementById('calendarLinkBox');
+  var calendarLink = document.getElementById('calendarLink');
+  if (parsed.calendarLink) {
+    calendarLink.href = parsed.calendarLink;
+    calendarLinkBox.classList.remove('hidden');
+  } else {
+    calendarLinkBox.classList.add('hidden');
+  }
+}
+
+// --- Show email draft ---
+function showEmailDraft(parsed) {
+  pendingEmail = parsed.details;
+
+  emailDraftBox.innerHTML =
+    '<h3>✉️ Email Draft</h3>' +
+    '<div class="email-field">' +
+      '<label>To:</label>' +
+      '<input type="email" id="emailTo" value="' + (parsed.details.recipientEmail || '') + '" placeholder="recipient@email.com" />' +
+    '</div>' +
+    '<div class="email-field">' +
+      '<label>Subject:</label>' +
+      '<input type="text" id="emailSubject" value="' + (parsed.details.subject || '') + '" />' +
+    '</div>' +
+    '<div class="email-field">' +
+      '<label>Message:</label>' +
+      '<textarea id="emailBody" rows="8">' + (parsed.details.emailBody || '') + '</textarea>' +
+    '</div>' +
+    '<p class="email-account">Sending from: ' + (parsed.details.accountType === 'work' ? '💼 Work Gmail' : '👤 Personal Gmail') + '</p>' +
+    '<div class="email-actions">' +
+      '<button class="confirm-btn" id="sendEmailBtn">📤 Send Email</button>' +
+      '<button class="redo-btn" id="cancelEmailBtn">❌ Cancel</button>' +
+    '</div>';
+
+  emailDraftBox.classList.remove('hidden');
+
+  document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
+  document.getElementById('cancelEmailBtn').addEventListener('click', function() {
+    fullReset();
+    transcriptText.textContent = '❌ Email cancelled.';
+    transcriptText.style.color = '#aaa';
+    transcriptText.style.fontStyle = 'normal';
+  });
+}
+
+// --- Send email ---
+async function sendEmail() {
+  var to = document.getElementById('emailTo').value;
+  var subject = document.getElementById('emailSubject').value;
+  var emailBody = document.getElementById('emailBody').value;
+
+  if (!to) {
+    alert('Please enter a recipient email address.');
+    return;
+  }
+
+  var sendBtn = document.getElementById('sendEmailBtn');
+  sendBtn.textContent = '📤 Sending...';
+  sendBtn.disabled = true;
+
+  try {
+    var response = await fetch('/.netlify/functions/gmail-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: to,
+        subject: subject,
+        emailBody: emailBody,
+        accountType: pendingEmail.accountType
+      })
+    });
+
+    var data = await response.json();
+
+    if (data.success) {
+      fullReset();
+      transcriptText.textContent = '✅ Email sent successfully!';
+      transcriptText.style.color = '#3ecfcf';
+      transcriptText.style.fontStyle = 'normal';
+    } else {
+      sendBtn.textContent = '📤 Send Email';
+      sendBtn.disabled = false;
+      alert('Failed to send: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    sendBtn.textContent = '📤 Send Email';
+    sendBtn.disabled = false;
+    alert('Error sending email: ' + err.message);
+  }
+}
+
+// --- Hide email draft ---
+function hideEmailDraft() {
+  try {
+    emailDraftBox.classList.add('hidden');
+    emailDraftBox.innerHTML = '';
+  } catch(e) {}
+  pendingEmail = null;
+}
+
+// --- Confirm / Redo buttons ---
+confirmBtn.addEventListener('click', function() {
+  fullReset();
+  transcriptText.textContent = '✅ Got it! ARIA is on it.';
+  transcriptText.style.color = '#3ecfcf';
+  transcriptText.style.fontStyle = 'normal';
+});
+
+redoBtn.addEventListener('click', function() {
+  fullReset();
+});
