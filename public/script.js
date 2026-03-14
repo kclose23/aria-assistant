@@ -218,6 +218,22 @@ function hideEmailDraft() {
   pendingEmail = null;
 }
 
+document.getElementById('manualSubmit').addEventListener('click', () => {
+  const input = document.getElementById('manualInput');
+  const text = input.value.trim();
+  if (!text) return;
+  transcriptText.textContent = text;
+  transcriptText.style.color = '#f0f0f0';
+  transcriptText.style.fontStyle = 'normal';
+  input.value = '';
+  handleFinalTranscript(text);
+});
+
+document.getElementById('manualInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    document.getElementById('manualSubmit').click();
+  }
+});  
 confirmBtn.addEventListener('click', () => {
   resultBox.classList.add('hidden');
   transcriptText.textContent = '✅ Got it! ARIA is on it.';
