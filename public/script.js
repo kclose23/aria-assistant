@@ -71,6 +71,9 @@ function resetMic() {
 
 async function handleFinalTranscript(text) {
   micStatus.textContent = '🧠 ARIA is thinking...';
+  resultBox.classList.add('hidden');
+  hideEmailDraft();
+
   try {
     const response = await fetch('/.netlify/functions/ask', {
       method: 'POST',
@@ -80,7 +83,10 @@ async function handleFinalTranscript(text) {
     if (!response.ok) throw new Error('Server error: ' + response.status);
     const parsed = await response.json();
 
-    if (parsed.type === 'EMAIL') {
+    console.log('ARIA response:', JSON.stringify(parsed));
+
+    if (parsed.type === 'EMAIL' && parsed.details) {
+      resultBox.classList.add('hidden');
       showEmailDraft(parsed);
     } else {
       showResult(parsed);
