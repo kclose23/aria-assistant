@@ -26,7 +26,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     transcriptText.style.fontStyle = 'normal';
   };
 
-  recognition.onresult = (event) => {
+recognition.onresult = (event) => {
     let interim = '';
     let final = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -35,6 +35,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       else interim += t;
     }
     transcriptText.textContent = final || interim;
+    stopListeningAfterSilence();
     if (final) {
       lastTranscript = final.trim();
       handleFinalTranscript(lastTranscript);
@@ -64,9 +65,19 @@ micBtn.addEventListener('click', () => {
 });
 
 function resetMic() {
+ let silenceTimer = null;
+
+function resetMic() {
   isListening = false;
   micBtn.classList.remove('listening');
   micStatus.textContent = 'Tap to speak';
+}
+
+function stopListeningAfterSilence() {
+  if (silenceTimer) clearTimeout(silenceTimer);
+  silenceTimer = setTimeout(() => {
+    if (isListening) recognition.stop();
+  }, 2500);
 }
 
 async function handleFinalTranscript(text) {
