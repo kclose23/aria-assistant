@@ -201,4 +201,39 @@ header .subtitle {
 
 .hidden {
   display: none;
+  .manual-input-box {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.manual-input-box input {
+  flex: 1;
+  background: #1a1a2e;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #f0f0f0;
+  font-size: 0.95rem;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.manual-input-box input:focus {
+  outline: none;
+  border-color: #3ecfcf;
+}
+
+.manual-input-box button {
+  background: linear-gradient(135deg, #6c63ff, #3ecfcf);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.manual-input-box button:hover {
+  opacity: 0.85;
 }
