@@ -86,7 +86,6 @@ async function handleFinalTranscript(text) {
     console.log('ARIA response:', JSON.stringify(parsed));
 
     if (parsed.type === 'EMAIL' && parsed.details) {
-      resultBox.classList.add('hidden');
       showEmailDraft(parsed);
     } else {
       showResult(parsed);
@@ -123,40 +122,32 @@ function showResult(parsed) {
 
 function showEmailDraft(parsed) {
   pendingEmail = parsed.details;
+  const draftBox = document.getElementById('emailDraftBox');
 
-  let draftBox = document.getElementById('emailDraftBox');
-  if (!draftBox) {
-    draftBox = document.createElement('div');
-    draftBox.id = 'emailDraftBox';
-    draftBox.className = 'email-draft-box';
-    document.querySelector('.container').appendChild(draftBox);
-  }
-
-  draftBox.innerHTML = `
-    <h3>✉️ Email Draft</h3>
-    <div class="email-field">
-      <label>To:</label>
-      <input type="email" id="emailTo" value="${parsed.details.recipientEmail || ''}" placeholder="recipient@email.com" />
-    </div>
-    <div class="email-field">
-      <label>Subject:</label>
-      <input type="text" id="emailSubject" value="${parsed.details.subject || ''}" />
-    </div>
-    <div class="email-field">
-      <label>Message:</label>
-      <textarea id="emailBody" rows="8">${parsed.details.emailBody || ''}</textarea>
-    </div>
-    <p class="email-account">Sending from: ${parsed.details.accountType === 'work' ? '💼 Work Gmail' : '👤 Personal Gmail'}</p>
-    <div class="email-actions">
-      <button class="confirm-btn" id="sendEmailBtn">📤 Send Email</button>
-      <button class="redo-btn" id="cancelEmailBtn">❌ Cancel</button>
-    </div>
-  `;
+  draftBox.innerHTML =
+    '<h3>✉️ Email Draft</h3>' +
+    '<div class="email-field">' +
+      '<label>To:</label>' +
+      '<input type="email" id="emailTo" value="' + (parsed.details.recipientEmail || '') + '" placeholder="recipient@email.com" />' +
+    '</div>' +
+    '<div class="email-field">' +
+      '<label>Subject:</label>' +
+      '<input type="text" id="emailSubject" value="' + (parsed.details.subject || '') + '" />' +
+    '</div>' +
+    '<div class="email-field">' +
+      '<label>Message:</label>' +
+      '<textarea id="emailBody" rows="8">' + (parsed.details.emailBody || '') + '</textarea>' +
+    '</div>' +
+    '<p class="email-account">Sending from: ' + (parsed.details.accountType === 'work' ? '💼 Work Gmail' : '👤 Personal Gmail') + '</p>' +
+    '<div class="email-actions">' +
+      '<button class="confirm-btn" id="sendEmailBtn">📤 Send Email</button>' +
+      '<button class="redo-btn" id="cancelEmailBtn">❌ Cancel</button>' +
+    '</div>';
 
   draftBox.classList.remove('hidden');
 
   document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
-  document.getElementById('cancelEmailBtn').addEventListener('click', () => {
+  document.getElementById('cancelEmailBtn').addEventListener('click', function() {
     hideEmailDraft();
     transcriptText.textContent = '❌ Email cancelled.';
     transcriptText.style.color = '#aaa';
@@ -182,9 +173,9 @@ async function sendEmail() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        to,
-        subject,
-        emailBody,
+        to: to,
+        subject: subject,
+        emailBody: emailBody,
         accountType: pendingEmail.accountType
       })
     });
@@ -209,7 +200,10 @@ async function sendEmail() {
 
 function hideEmailDraft() {
   const draftBox = document.getElementById('emailDraftBox');
-  if (draftBox) draftBox.classList.add('hidden');
+  if (draftBox) {
+    draftBox.classList.add('hidden');
+    draftBox.innerHTML = '';
+  }
   pendingEmail = null;
 }
 
@@ -222,4 +216,6 @@ confirmBtn.addEventListener('click', () => {
 redoBtn.addEventListener('click', () => {
   resultBox.classList.add('hidden');
   transcriptText.textContent = 'Your words will appear here...';
-  transcriptText.style.co
+  transcriptText.style.color = '#666';
+  transcriptText.style.fontStyle = 'italic';
+});
