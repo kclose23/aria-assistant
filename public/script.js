@@ -9,6 +9,7 @@ const redoBtn = document.getElementById('redoBtn');
 let recognition;
 let isListening = false;
 let lastTranscript = '';
+let pendingEmail = null;
 
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -57,6 +58,7 @@ micBtn.addEventListener('click', () => {
     recognition.stop();
   } else {
     resultBox.classList.add('hidden');
+    hideEmailDraft();
     recognition.start();
   }
 });
@@ -75,9 +77,14 @@ async function handleFinalTranscript(text) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text })
     });
-    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    if (!response.ok) throw new Error('Server error: ' + response.status);
     const parsed = await response.json();
-    showResult(parsed);
+
+    if (parsed.type === 'EMAIL') {
+      showEmailDraft(parsed);
+    } else {
+      showResult(parsed);
+    }
   } catch (err) {
     resultText.textContent = '⚠️ Something went wrong. Please try again.';
     resultBox.classList.remove('hidden');
@@ -95,18 +102,109 @@ function showResult(parsed) {
     BRAIN_DUMP: '🧠'
   };
   const icon = icons[parsed.type] || '📋';
-  resultText.textContent = `${icon} ${parsed.confirmation}`;
+  resultText.textContent = icon + ' ' + parsed.confirmation;
   resultBox.classList.remove('hidden');
 
   const calendarLinkBox = document.getElementById('calendarLinkBox');
   const calendarLink = document.getElementById('calendarLink');
-
   if (parsed.calendarLink) {
     calendarLink.href = parsed.calendarLink;
     calendarLinkBox.classList.remove('hidden');
   } else {
     calendarLinkBox.classList.add('hidden');
   }
+}
+
+function showEmailDraft(parsed) {
+  pendingEmail = parsed.details;
+
+  let draftBox = document.getElementById('emailDraftBox');
+  if (!draftBox) {
+    draftBox = document.createElement('div');
+    draftBox.id = 'emailDraftBox';
+    draftBox.className = 'email-draft-box';
+    document.querySelector('.container').appendChild(draftBox);
+  }
+
+  draftBox.innerHTML = `
+    <h3>✉️ Email Draft</h3>
+    <div class="email-field">
+      <label>To:</label>
+      <input type="email" id="emailTo" value="${parsed.details.recipientEmail || ''}" placeholder="recipient@email.com" />
+    </div>
+    <div class="email-field">
+      <label>Subject:</label>
+      <input type="text" id="emailSubject" value="${parsed.details.subject || ''}" />
+    </div>
+    <div class="email-field">
+      <label>Message:</label>
+      <textarea id="emailBody" rows="8">${parsed.details.emailBody || ''}</textarea>
+    </div>
+    <p class="email-account">Sending from: ${parsed.details.accountType === 'work' ? '💼 Work Gmail' : '👤 Personal Gmail'}</p>
+    <div class="email-actions">
+      <button class="confirm-btn" id="sendEmailBtn">📤 Send Email</button>
+      <button class="redo-btn" id="cancelEmailBtn">❌ Cancel</button>
+    </div>
+  `;
+
+  draftBox.classList.remove('hidden');
+
+  document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
+  document.getElementById('cancelEmailBtn').addEventListener('click', () => {
+    hideEmailDraft();
+    transcriptText.textContent = '❌ Email cancelled.';
+    transcriptText.style.color = '#aaa';
+  });
+}
+
+async function sendEmail() {
+  const to = document.getElementById('emailTo').value;
+  const subject = document.getElementById('emailSubject').value;
+  const emailBody = document.getElementById('emailBody').value;
+
+  if (!to) {
+    alert('Please enter a recipient email address.');
+    return;
+  }
+
+  const sendBtn = document.getElementById('sendEmailBtn');
+  sendBtn.textContent = '📤 Sending...';
+  sendBtn.disabled = true;
+
+  try {
+    const response = await fetch('/.netlify/functions/gmail-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to,
+        subject,
+        emailBody,
+        accountType: pendingEmail.accountType
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      hideEmailDraft();
+      transcriptText.textContent = '✅ Email sent successfully!';
+      transcriptText.style.color = '#3ecfcf';
+    } else {
+      sendBtn.textContent = '📤 Send Email';
+      sendBtn.disabled = false;
+      alert('Failed to send: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    sendBtn.textContent = '📤 Send Email';
+    sendBtn.disabled = false;
+    alert('Error sending email: ' + err.message);
+  }
+}
+
+function hideEmailDraft() {
+  const draftBox = document.getElementById('emailDraftBox');
+  if (draftBox) draftBox.classList.add('hidden');
+  pendingEmail = null;
 }
 
 confirmBtn.addEventListener('click', () => {
@@ -118,6 +216,4 @@ confirmBtn.addEventListener('click', () => {
 redoBtn.addEventListener('click', () => {
   resultBox.classList.add('hidden');
   transcriptText.textContent = 'Your words will appear here...';
-  transcriptText.style.color = '#666';
-  transcriptText.style.fontStyle = 'italic';
-});
+  transcriptText.style.co
