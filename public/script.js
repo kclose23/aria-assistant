@@ -1,24 +1,43 @@
-const micBtn = document.getElementById('micBtn');
-const micStatus = document.getElementById('micStatus');
-const transcriptText = document.getElementById('transcriptText');
-const resultBox = document.getElementById('resultBox');
-const resultText = document.getElementById('resultText');
-const confirmBtn = document.getElementById('confirmBtn');
-const redoBtn = document.getElementById('redoBtn');
+var micBtn = document.getElementById('micBtn');
+var micStatus = document.getElementById('micStatus');
+var transcriptText = document.getElementById('transcriptText');
+var resultBox = document.getElementById('resultBox');
+var resultText = document.getElementById('resultText');
+var confirmBtn = document.getElementById('confirmBtn');
+var redoBtn = document.getElementById('redoBtn');
+var emailDraftBox = document.getElementById('emailDraftBox');
+var manualInput = document.getElementById('manualInput');
+var manualSubmit = document.getElementById('manualSubmit');
 
-let recognition;
-let isListening = false;
-let lastTranscript = '';
-let pendingEmail = null;
+var recognition = null;
+var isListening = false;
+var pendingEmail = null;
+var silenceTimer = null;
 
+// --- Manual input ---
+manualSubmit.addEventListener('click', function() {
+  var text = manualInput.value.trim();
+  if (!text) return;
+  transcriptText.textContent = text;
+  transcriptText.style.color = '#f0f0f0';
+  transcriptText.style.fontStyle = 'normal';
+  manualInput.value = '';
+  handleFinalTranscript(text);
+});
+
+manualInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') manualSubmit.click();
+});
+
+// --- Voice setup ---
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = 'en-US';
 
-  recognition.onstart = () => {
+  recognition.onstart = function() {
     isListening = true;
     micBtn.classList.add('listening');
     micStatus.textContent = '🔴 Listening... speak now';
@@ -26,35 +45,43 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     transcriptText.style.fontStyle = 'normal';
   };
 
-recognition.onresult = (event) => {
-    let interim = '';
-    let final = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const t = event.results[i][0].transcript;
+  recognition.onresult = function(event) {
+    var interim = '';
+    var final = '';
+    for (var i = event.resultIndex; i < event.results.length; i++) {
+      var t = event.results[i][0].transcript;
       if (event.results[i].isFinal) final += t;
       else interim += t;
     }
     transcriptText.textContent = final || interim;
-    stopListeningAfterSilence();
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(function() {
+      if (isListening) recognition.stop();
+    }, 2500);
     if (final) {
-      lastTranscript = final.trim();
-      handleFinalTranscript(lastTranscript);
+      var transcript = final.trim();
+      if (silenceTimer) clearTimeout(silenceTimer);
+      recognition.stop();
+      handleFinalTranscript(transcript);
     }
   };
 
-  recognition.onerror = (e) => {
+  recognition.onerror = function(e) {
     micStatus.textContent = '⚠️ Error: ' + e.error + '. Try again.';
     resetMic();
   };
 
-  recognition.onend = () => resetMic();
+  recognition.onend = function() {
+    resetMic();
+  };
 
 } else {
   micBtn.disabled = true;
   micStatus.textContent = '⚠️ Voice not supported. Please use Chrome.';
 }
 
-micBtn.addEventListener('click', () => {
+// --- Mic button ---
+micBtn.addEventListener('click', function() {
   if (isListening) {
     recognition.stop();
   } else {
@@ -65,35 +92,26 @@ micBtn.addEventListener('click', () => {
 });
 
 function resetMic() {
- let silenceTimer = null;
-
-function resetMic() {
   isListening = false;
   micBtn.classList.remove('listening');
   micStatus.textContent = 'Tap to speak';
 }
 
-function stopListeningAfterSilence() {
-  if (silenceTimer) clearTimeout(silenceTimer);
-  silenceTimer = setTimeout(() => {
-    if (isListening) recognition.stop();
-  }, 2500);
-}
-
+// --- Handle transcript ---
 async function handleFinalTranscript(text) {
   micStatus.textContent = '🧠 ARIA is thinking...';
   resultBox.classList.add('hidden');
   hideEmailDraft();
 
   try {
-    const response = await fetch('/.netlify/functions/ask', {
+    var response = await fetch('/.netlify/functions/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      body: JSON.stringify({ text: text })
     });
-    if (!response.ok) throw new Error('Server error: ' + response.status);
-    const parsed = await response.json();
 
+    if (!response.ok) throw new Error('Server error: ' + response.status);
+    var parsed = await response.json();
     console.log('ARIA response:', JSON.stringify(parsed));
 
     if (parsed.type === 'EMAIL' && parsed.details) {
@@ -109,20 +127,21 @@ async function handleFinalTranscript(text) {
   micStatus.textContent = 'Tap to speak';
 }
 
+// --- Show result ---
 function showResult(parsed) {
-  const icons = {
+  var icons = {
     REMINDER: '⏰',
     CALENDAR: '📅',
     EMAIL: '✉️',
     TASK: '✅',
     BRAIN_DUMP: '🧠'
   };
-  const icon = icons[parsed.type] || '📋';
+  var icon = icons[parsed.type] || '📋';
   resultText.textContent = icon + ' ' + parsed.confirmation;
   resultBox.classList.remove('hidden');
 
-  const calendarLinkBox = document.getElementById('calendarLinkBox');
-  const calendarLink = document.getElementById('calendarLink');
+  var calendarLinkBox = document.getElementById('calendarLinkBox');
+  var calendarLink = document.getElementById('calendarLink');
   if (parsed.calendarLink) {
     calendarLink.href = parsed.calendarLink;
     calendarLinkBox.classList.remove('hidden');
@@ -131,11 +150,11 @@ function showResult(parsed) {
   }
 }
 
+// --- Show email draft ---
 function showEmailDraft(parsed) {
   pendingEmail = parsed.details;
-  const draftBox = document.getElementById('emailDraftBox');
 
-  draftBox.innerHTML =
+  emailDraftBox.innerHTML =
     '<h3>✉️ Email Draft</h3>' +
     '<div class="email-field">' +
       '<label>To:</label>' +
@@ -155,7 +174,7 @@ function showEmailDraft(parsed) {
       '<button class="redo-btn" id="cancelEmailBtn">❌ Cancel</button>' +
     '</div>';
 
-  draftBox.classList.remove('hidden');
+  emailDraftBox.classList.remove('hidden');
 
   document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
   document.getElementById('cancelEmailBtn').addEventListener('click', function() {
@@ -165,22 +184,23 @@ function showEmailDraft(parsed) {
   });
 }
 
+// --- Send email ---
 async function sendEmail() {
-  const to = document.getElementById('emailTo').value;
-  const subject = document.getElementById('emailSubject').value;
-  const emailBody = document.getElementById('emailBody').value;
+  var to = document.getElementById('emailTo').value;
+  var subject = document.getElementById('emailSubject').value;
+  var emailBody = document.getElementById('emailBody').value;
 
   if (!to) {
     alert('Please enter a recipient email address.');
     return;
   }
 
-  const sendBtn = document.getElementById('sendEmailBtn');
+  var sendBtn = document.getElementById('sendEmailBtn');
   sendBtn.textContent = '📤 Sending...';
   sendBtn.disabled = true;
 
   try {
-    const response = await fetch('/.netlify/functions/gmail-send', {
+    var response = await fetch('/.netlify/functions/gmail-send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -191,7 +211,7 @@ async function sendEmail() {
       })
     });
 
-    const data = await response.json();
+    var data = await response.json();
 
     if (data.success) {
       hideEmailDraft();
@@ -209,38 +229,21 @@ async function sendEmail() {
   }
 }
 
+// --- Hide email draft ---
 function hideEmailDraft() {
-  const draftBox = document.getElementById('emailDraftBox');
-  if (draftBox) {
-    draftBox.classList.add('hidden');
-    draftBox.innerHTML = '';
-  }
+  emailDraftBox.classList.add('hidden');
+  emailDraftBox.innerHTML = '';
   pendingEmail = null;
 }
 
-document.getElementById('manualSubmit').addEventListener('click', () => {
-  const input = document.getElementById('manualInput');
-  const text = input.value.trim();
-  if (!text) return;
-  transcriptText.textContent = text;
-  transcriptText.style.color = '#f0f0f0';
-  transcriptText.style.fontStyle = 'normal';
-  input.value = '';
-  handleFinalTranscript(text);
-});
-
-document.getElementById('manualInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    document.getElementById('manualSubmit').click();
-  }
-});  
-confirmBtn.addEventListener('click', () => {
+// --- Confirm / Redo buttons ---
+confirmBtn.addEventListener('click', function() {
   resultBox.classList.add('hidden');
   transcriptText.textContent = '✅ Got it! ARIA is on it.';
   transcriptText.style.color = '#3ecfcf';
 });
 
-redoBtn.addEventListener('click', () => {
+redoBtn.addEventListener('click', function() {
   resultBox.classList.add('hidden');
   transcriptText.textContent = 'Your words will appear here...';
   transcriptText.style.color = '#666';
