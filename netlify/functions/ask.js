@@ -83,6 +83,8 @@ For REMINDER, TASK, BRAIN_DUMP:
 Only return the JSON. No extra text.
 `;
 
+  const baseUrl = 'https://sprightly-lebkuchen-41b633.netlify.app';
+
   try {
     const geminiRes = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey,
@@ -105,7 +107,6 @@ Only return the JSON. No extra text.
     const raw = data.candidates[0].content.parts[0].text;
     const cleaned = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned);
-    const baseUrl = 'https://sprightly-lebkuchen-41b633.netlify.app';
 
     // Handle CALENDAR
     if (parsed.type === 'CALENDAR' && parsed.details?.calendarType !== 'ask') {
@@ -127,6 +128,18 @@ Only return the JSON. No extra text.
       } else {
         parsed.confirmation = '⚠️ Understood the event but could not add it. Make sure your calendar is connected.';
       }
+    }
+
+    // Handle REMINDER — send Slack notification
+    if (parsed.type === 'REMINDER' && parsed.details) {
+      await fetch(baseUrl + '/.netlify/functions/slack-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: parsed.confirmation,
+          emoji: '⏰'
+        })
+      });
     }
 
     return {
