@@ -1,8 +1,8 @@
 const { getStore } = require('@netlify/blobs');
 
-export const config = { schedule: "* * * * *" };
+module.exports.config = { schedule: "* * * * *" };
 
-exports.handler = async function() {
+module.exports.handler = async function() {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
   if (!webhookUrl) return { statusCode: 500, body: 'No webhook' };
 
