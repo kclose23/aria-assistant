@@ -27,6 +27,9 @@ Current date: ${now.toLocaleDateString('en-US', {timeZone: 'America/Denver', wee
 Current time: ${now.toLocaleTimeString('en-US', {timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit'})}
 
 The user said: "${text}"
+Current time in Mountain Time: ${now.toLocaleTimeString('en-US', {timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit'})}
+For REMINDER types, always calculate the exact scheduledISO datetime based on current time. "In 5 minutes" = current time + 5 minutes. "Tomorrow at 2pm" = tomorrow's date at 14:00:00-06:00. ALWAYS include scheduledISO.
+Blank line between them, then the two new lines. Commit and trigger deploy! 🎯 Sonnet 4.6Claude is AI and can make mistakes. Please double-check responses.Icon 192 · PNG
 
 Identify the TYPE. Choose ONE of: REMINDER, CALENDAR, EMAIL, TASK, BRAIN_DUMP
 
