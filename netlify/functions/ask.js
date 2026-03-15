@@ -130,19 +130,35 @@ Only return the JSON. No extra text.
       }
     }
 
-// Handle REMINDER — send Slack notification
+// Handle REMINDER — store for scheduled delivery
     if (parsed.type === 'REMINDER' && parsed.details) {
       try {
-        await fetch(baseUrl + '/.netlify/functions/slack-notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: parsed.confirmation,
-            emoji: '⏰'
-          })
-        });
-      } catch (slackErr) {
-        console.error('Slack notify failed:', slackErr);
+        const scheduledISO = parsed.details.scheduledISO || null;
+        
+        if (scheduledISO) {
+          await fetch(baseUrl + '/.netlify/functions/reminder-store', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              what: parsed.details.what,
+              when: parsed.details.when,
+              confirmation: parsed.confirmation,
+              scheduledISO: scheduledISO
+            })
+          });
+          parsed.confirmation = parsed.confirmation + ' — I\'ll remind you in Slack at the right time.';
+        } else {
+          await fetch(baseUrl + '/.netlify/functions/slack-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: parsed.confirmation,
+              emoji: '⏰'
+            })
+          });
+        }
+      } catch (err) {
+        console.error('Reminder error:', err);
       }
     }
 
