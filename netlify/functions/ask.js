@@ -1,4 +1,4 @@
-exports.handler = async function(event) {
+module.exports.handler = async function(event) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
@@ -21,15 +21,17 @@ exports.handler = async function(event) {
   }
 
   const now = new Date();
+  const baseUrl = 'https://sprightly-lebkuchen-41b633.netlify.app';
+
   const prompt = `
 You are ARIA, a smart productivity assistant for Kyler, located in Salt Lake City, Utah (Mountain Time, UTC-6, daylight saving active).
 Current date: ${now.toLocaleDateString('en-US', {timeZone: 'America/Denver', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}
 Current time: ${now.toLocaleTimeString('en-US', {timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit'})}
 
 The user said: "${text}"
+
 Current time in Mountain Time: ${now.toLocaleTimeString('en-US', {timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit'})}
 For REMINDER types, always calculate the exact scheduledISO datetime based on current time. "In 5 minutes" = current time + 5 minutes. "Tomorrow at 2pm" = tomorrow's date at 14:00:00-06:00. ALWAYS include scheduledISO.
-Blank line between them, then the two new lines. Commit and trigger deploy! 🎯 Sonnet 4.6Claude is AI and can make mistakes. Please double-check responses.Icon 192 · PNG
 
 Identify the TYPE. Choose ONE of: REMINDER, CALENDAR, EMAIL, TASK, BRAIN_DUMP
 
@@ -37,6 +39,8 @@ For CALENDAR events:
 - calendarType: "work" (meetings, calls, clients, travel, deadlines) or "family" (kids, personal, errands, medical) or "ask" if ambiguous
 - startISO and endISO: always use -06:00 offset (Mountain Time)
 - Example: "Monday at 2pm" = "2026-03-16T14:00:00-06:00"
+- recurrence: include if user says "every", "weekly", "daily", "monthly" etc. Otherwise set to null.
+- attendees: array of email addresses mentioned. Otherwise empty array [].
 
 For EMAIL:
 - accountType: "work" (colleagues, clients, business) or "family" (personal, friends, family)
@@ -56,16 +60,10 @@ For CALENDAR:
     "startISO": "2026-03-16T09:00:00-06:00",
     "endISO": "2026-03-16T10:00:00-06:00",
     "recurrence": "every Monday",
-    "attendees": ["john@company.com", "sarah@company.com"]
+    "attendees": ["john@company.com"]
   },
   "confirmation": "📅 Got it! Adding weekly team standup to your Work Calendar every Monday at 9am."
 }
-
-Rules for CALENDAR:
-- recurrence: include if user says "every", "weekly", "daily", "monthly" etc. Otherwise set to null.
-- attendees: array of email addresses mentioned. Otherwise empty array [].
-- If user mentions attendees by name only (no email), still set attendees to [].
-- startISO and endISO always use -06:00 Mountain Time offset.
 
 For EMAIL:
 {
@@ -75,39 +73,25 @@ For EMAIL:
     "recipientName": "Sarah",
     "recipientEmail": "sarah@company.com",
     "subject": "Proposal Update",
-    "emailBody": "Hi Sarah,\n\nI wanted to reach out regarding the proposal. We are targeting end of month for completion and would love to get your feedback by Friday if possible.\n\nPlease let me know if you have any questions.\n\nBest,\nKyler"
+    "emailBody": "Hi Sarah,\\n\\nI wanted to reach out regarding the proposal.\\n\\nBest,\\nKyler"
   },
-  "confirmation": "✉️ I've drafted an email to Sarah about the proposal. Review it below and confirm to send."
+  "confirmation": "✉️ I've drafted an email to Sarah. Review it below and confirm to send."
 }
 
 For REMINDER:
-CRITICAL: You MUST calculate and include scheduledISO. Never omit it.
-Steps:
-1. Look at the current date and time provided above
-2. Calculate the exact future datetime the user is asking for
-3. Format it as ISO 8601 with -06:00 offset
-Examples:
-- "in 5 minutes" from 9:15pm = "2026-03-14T21:20:00-06:00"
-- "tomorrow at 2pm" = "2026-03-15T14:00:00-06:00"
-- "Monday at 9am" = "2026-03-16T09:00:00-06:00"
-
 {
   "type": "REMINDER",
   "details": {
     "what": "call dentist",
     "when": "tomorrow at 10am",
-    "who": "",
-    "scheduledISO": "2026-03-15T10:00:00-06:00"
+    "who": ""
   },
   "confirmation": "⏰ Got it! I'll remind you to call the dentist tomorrow at 10am."
 }
 
-For TASK, BRAIN_DUMP use same format but scheduledISO can be null.
-
+For TASK, BRAIN_DUMP use REMINDER format.
 Only return the JSON. No extra text.
 `;
-
-  const baseUrl = 'https://sprightly-lebkuchen-41b633.netlify.app';
 
   try {
     const geminiRes = await fetch(
@@ -148,21 +132,23 @@ Only return the JSON. No extra text.
         })
       });
       const calData = await calRes.json();
-    if (calData.success) {
+      if (calData.success) {
         var calLabel = parsed.details.calendarType === 'work' ? '💼 Work' : '👨‍👩‍👧 Family';
         var recurringLabel = calData.recurring ? ' (repeating)' : '';
         var attendeeLabel = calData.attendeeCount > 0 ? ' — ' + calData.attendeeCount + ' attendee(s) invited' : '';
         parsed.confirmation = '📅 Done! "' + parsed.details.what + '" added to your ' + calLabel + ' Calendar' + recurringLabel + attendeeLabel + '.';
         parsed.calendarLink = calData.eventLink;
+      } else {
+        parsed.confirmation = '⚠️ Understood the event but could not add it. Make sure your calendar is connected.';
       }
     }
 
-// Handle REMINDER — schedule via Slack
+    // Handle REMINDER — schedule via Slack
     if (parsed.type === 'REMINDER' && parsed.details) {
       try {
         const whenText = (parsed.details.when || '').toLowerCase();
-        const now = new Date();
-        const mtNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Denver' }));
+        const now2 = new Date();
+        const mtNow = new Date(now2.toLocaleString('en-US', { timeZone: 'America/Denver' }));
         let scheduledTime = null;
 
         const inMinutes = whenText.match(/in (\d+) minute/);
@@ -171,9 +157,9 @@ Only return the JSON. No extra text.
         const tomorrow = whenText.includes('tomorrow');
 
         if (inMinutes) {
-          scheduledTime = new Date(now.getTime() + parseInt(inMinutes[1]) * 60000);
+          scheduledTime = new Date(now2.getTime() + parseInt(inMinutes[1]) * 60000);
         } else if (inHours) {
-          scheduledTime = new Date(now.getTime() + parseInt(inHours[1]) * 3600000);
+          scheduledTime = new Date(now2.getTime() + parseInt(inHours[1]) * 3600000);
         } else if (atTime) {
           let hours = parseInt(atTime[1]);
           const minutes = parseInt(atTime[2] || '0');
@@ -183,7 +169,7 @@ Only return the JSON. No extra text.
           scheduledTime = new Date(mtNow);
           scheduledTime.setHours(hours, minutes, 0, 0);
           if (tomorrow) scheduledTime.setDate(scheduledTime.getDate() + 1);
-          if (scheduledTime <= now) scheduledTime.setDate(scheduledTime.getDate() + 1);
+          if (scheduledTime <= now2) scheduledTime.setDate(scheduledTime.getDate() + 1);
         }
 
         const slackPayload = {
@@ -191,7 +177,7 @@ Only return the JSON. No extra text.
           emoji: '⏰'
         };
 
-        if (scheduledTime && scheduledTime > new Date(now.getTime() + 60000)) {
+        if (scheduledTime && scheduledTime > new Date(now2.getTime() + 60000)) {
           slackPayload.scheduledISO = scheduledTime.toISOString();
           parsed.confirmation = parsed.confirmation + ' — I\'ll ping you in Slack at the right time ✓';
         }
@@ -202,30 +188,6 @@ Only return the JSON. No extra text.
           body: JSON.stringify(slackPayload)
         });
 
-      } catch (err) {
-        console.error('Reminder error:', err);
-      }
-    }
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              what: parsed.details.what,
-              when: parsed.details.when,
-              confirmation: parsed.confirmation,
-              scheduledISO: scheduledISO
-            })
-          });
-          parsed.confirmation = parsed.confirmation + ' — I\'ll remind you in Slack at the right time.';
-        } else {
-          await fetch(baseUrl + '/.netlify/functions/slack-notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              message: parsed.confirmation,
-              emoji: '⏰'
-            })
-          });
-        }
       } catch (err) {
         console.error('Reminder error:', err);
       }
