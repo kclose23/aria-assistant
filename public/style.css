@@ -106,8 +106,10 @@ body {
 /* --- Main --- */
 .main {
   flex: 1;
-  padding: 32px 24px 100px;
+  padding: 24px 24px 100px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* --- Mic --- */
@@ -115,23 +117,23 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 32px;
+  padding: 32px 0 36px;
 }
 
 .mic-ring-outer {
-  width: 130px;
-  height: 130px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
   border: 1px solid #1a1a2a;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .mic-ring-inner {
-  width: 112px;
-  height: 112px;
+  width: 138px;
+  height: 138px;
   border-radius: 50%;
   border: 0.5px solid #141420;
   display: flex;
@@ -140,12 +142,12 @@ body {
 }
 
 .mic-btn {
-  width: 96px;
-  height: 96px;
+  width: 118px;
+  height: 118px;
   border-radius: 50%;
   border: 0.5px solid #2a2a3a;
   background: #111118;
-  font-size: 34px;
+  font-size: 44px;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   display: flex;
@@ -173,10 +175,10 @@ body {
 }
 
 .mic-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #3a3a4a;
-  font-weight: 400;
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
