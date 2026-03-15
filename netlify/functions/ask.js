@@ -157,7 +157,7 @@ Only return the JSON. No extra text.
       }
     }
 
-// Handle REMINDER — parse time and store for scheduled delivery
+// Handle REMINDER — schedule via Slack
     if (parsed.type === 'REMINDER' && parsed.details) {
       try {
         const whenText = (parsed.details.when || '').toLowerCase();
@@ -165,12 +165,10 @@ Only return the JSON. No extra text.
         const mtNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Denver' }));
         let scheduledTime = null;
 
-        // Parse relative times
         const inMinutes = whenText.match(/in (\d+) minute/);
         const inHours = whenText.match(/in (\d+) hour/);
-        const atTime = whenText.match(/at (\d+):?(\d*)\s*(am|pm)?/i);
+        const atTime = whenText.match(/(\d+):?(\d*)\s*(am|pm)/i);
         const tomorrow = whenText.includes('tomorrow');
-        const tonight = whenText.includes('tonight');
 
         if (inMinutes) {
           scheduledTime = new Date(now.getTime() + parseInt(inMinutes[1]) * 60000);
@@ -179,7 +177,7 @@ Only return the JSON. No extra text.
         } else if (atTime) {
           let hours = parseInt(atTime[1]);
           const minutes = parseInt(atTime[2] || '0');
-          const ampm = atTime[3];
+          const ampm = atTime[3].toLowerCase();
           if (ampm === 'pm' && hours !== 12) hours += 12;
           if (ampm === 'am' && hours === 12) hours = 0;
           scheduledTime = new Date(mtNow);
@@ -188,28 +186,22 @@ Only return the JSON. No extra text.
           if (scheduledTime <= now) scheduledTime.setDate(scheduledTime.getDate() + 1);
         }
 
-        if (scheduledTime) {
-          await fetch(baseUrl + '/.netlify/functions/reminder-store', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              what: parsed.details.what,
-              when: parsed.details.when,
-              confirmation: parsed.confirmation,
-              scheduledISO: scheduledTime.toISOString()
-            })
-          });
-          parsed.confirmation = parsed.confirmation + ' — I\'ll ping you in Slack at the right time. ✓';
-        } else {
-          await fetch(baseUrl + '/.netlify/functions/slack-notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              message: parsed.confirmation,
-              emoji: '⏰'
-            })
-          });
+        const slackPayload = {
+          message: parsed.confirmation,
+          emoji: '⏰'
+        };
+
+        if (scheduledTime && scheduledTime > new Date(now.getTime() + 60000)) {
+          slackPayload.scheduledISO = scheduledTime.toISOString();
+          parsed.confirmation = parsed.confirmation + ' — I\'ll ping you in Slack at the right time ✓';
         }
+
+        await fetch(baseUrl + '/.netlify/functions/slack-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(slackPayload)
+        });
+
       } catch (err) {
         console.error('Reminder error:', err);
       }
