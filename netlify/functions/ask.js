@@ -3,11 +3,11 @@ module.exports.handler = async function(event) {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  let text;
+  var text;
   try {
-    const body = JSON.parse(event.body);
+    var body = JSON.parse(event.body);
     text = body.text;
-  } catch {
+  } catch(e) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request body' }) };
   }
 
@@ -15,89 +15,43 @@ module.exports.handler = async function(event) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Missing text' }) };
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  var apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return { statusCode: 500, body: JSON.stringify({ error: 'Gemini API key not configured' }) };
   }
 
-const now = new Date();
-  const baseUrl = 'https://sprightly-lebkuchen-41b633.netlify.app';
+  var now = new Date();
+  var baseUrl = 'https://sprightly-lebkuchen-41b633.netlify.app';
 
-  const currentDate = now.toLocaleDateString('en-US', {timeZone: 'America/Denver', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
-  const currentTime = now.toLocaleTimeString('en-US', {timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit'});
+  var currentDate = now.toLocaleDateString('en-US', {timeZone: 'America/Denver', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
+  var currentTime = now.toLocaleTimeString('en-US', {timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit'});
 
-  const prompt = `
-You are ARIA, a smart productivity assistant for Kyler, located in Salt Lake City, Utah (Mountain Time, UTC-6, daylight saving active).
-Current date: ${currentDate}
-Current time: ${currentTime}
-
-The user said: "${text}"
-
-Current time in Mountain Time: ${currentTime}
-For REMINDER types, always calculate the exact scheduledISO datetime based on current time. "In 5 minutes" = current time + 5 minutes. "Tomorrow at 2pm" = tomorrow's date at 14:00:00-06:00. ALWAYS include scheduledISO.
-
-Identify the TYPE. Choose ONE of: REMINDER, CALENDAR, EMAIL, TASK, BRAIN_DUMP
-
-For CALENDAR events:
-- calendarType: "work" (meetings, calls, clients, travel, deadlines) or "family" (kids, personal, errands, medical) or "ask" if ambiguous
-- startISO and endISO: always use -06:00 offset (Mountain Time)
-- Example: "Monday at 2pm" = "2026-03-16T14:00:00-06:00"
-- recurrence: include if user says "every", "weekly", "daily", "monthly" etc. Otherwise set to null.
-- attendees: array of email addresses mentioned. Otherwise empty array [].
-
-For EMAIL:
-- accountType: "work" (colleagues, clients, business) or "family" (personal, friends, family)
-- Extract: recipient name, recipient email if mentioned, subject, key points to include
-- If no email address mentioned, set recipientEmail to null
-- Draft a professional, warm, concise email based on the key points
-
-Reply in this exact JSON format with no extra text:
-
-For CALENDAR:
-{
-  "type": "CALENDAR",
-  "details": {
-    "what": "team standup",
-    "when": "every Monday at 9am",
-    "calendarType": "work",
-    "startISO": "2026-03-16T09:00:00-06:00",
-    "endISO": "2026-03-16T10:00:00-06:00",
-    "recurrence": "every Monday",
-    "attendees": ["john@company.com"]
-  },
-  "confirmation": "📅 Got it! Adding weekly team standup to your Work Calendar every Monday at 9am."
-}
-
-For EMAIL:
-{
-  "type": "EMAIL",
-  "details": {
-    "accountType": "work",
-    "recipientName": "Sarah",
-    "recipientEmail": "sarah@company.com",
-    "subject": "Proposal Update",
-    "emailBody": "Hi Sarah,\\n\\nI wanted to reach out regarding the proposal.\\n\\nBest,\\nKyler"
-  },
-  "confirmation": "✉️ I've drafted an email to Sarah. Review it below and confirm to send."
-}
-
-For REMINDER:
-{
-  "type": "REMINDER",
-  "details": {
-    "what": "call dentist",
-    "when": "tomorrow at 10am",
-    "who": ""
-  },
-  "confirmation": "⏰ Got it! I'll remind you to call the dentist tomorrow at 10am."
-}
-
-For TASK, BRAIN_DUMP use REMINDER format.
-Only return the JSON. No extra text.
-`;
+  var prompt = 'You are ARIA, a smart productivity assistant for Kyler in Salt Lake City, Utah (Mountain Time, UTC-6).\n' +
+    'Current date: ' + currentDate + '\n' +
+    'Current time: ' + currentTime + '\n\n' +
+    'The user said: "' + text + '"\n\n' +
+    'Identify the TYPE. Choose ONE of: REMINDER, CALENDAR, EMAIL, TASK, BRAIN_DUMP\n\n' +
+    'For CALENDAR events:\n' +
+    '- calendarType: "work" (meetings, calls, clients, travel, deadlines) or "family" (kids, personal, errands, medical) or "ask" if ambiguous\n' +
+    '- startISO and endISO: always use -06:00 offset (Mountain Time)\n' +
+    '- recurrence: include if user says "every", "weekly", "daily", "monthly" etc. Otherwise null.\n' +
+    '- attendees: array of email addresses mentioned. Otherwise empty array [].\n\n' +
+    'For EMAIL:\n' +
+    '- accountType: "work" or "family"\n' +
+    '- Extract recipient name, email, subject, and draft a professional email\n' +
+    '- If no email address mentioned, set recipientEmail to null\n\n' +
+    'Reply in this exact JSON format with no extra text:\n\n' +
+    'For CALENDAR:\n' +
+    '{"type":"CALENDAR","details":{"what":"team standup","when":"every Monday at 9am","calendarType":"work","startISO":"2026-03-16T09:00:00-06:00","endISO":"2026-03-16T10:00:00-06:00","recurrence":"every Monday","attendees":["john@company.com"]},"confirmation":"Got it! Adding team standup to Work Calendar every Monday at 9am."}\n\n' +
+    'For EMAIL:\n' +
+    '{"type":"EMAIL","details":{"accountType":"work","recipientName":"Sarah","recipientEmail":"sarah@company.com","subject":"Proposal Update","emailBody":"Hi Sarah,\\n\\nI wanted to reach out.\\n\\nBest,\\nKyler"},"confirmation":"I have drafted an email to Sarah. Review it below."}\n\n' +
+    'For REMINDER:\n' +
+    '{"type":"REMINDER","details":{"what":"call dentist","when":"tomorrow at 10am","who":""},"confirmation":"Got it! I will remind you to call the dentist tomorrow at 10am."}\n\n' +
+    'For TASK, BRAIN_DUMP use REMINDER format.\n' +
+    'Only return the JSON. No extra text.';
 
   try {
-    const geminiRes = await fetch(
+    var geminiRes = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey,
       {
         method: 'POST',
@@ -106,27 +60,27 @@ Only return the JSON. No extra text.
       }
     );
 
-    const data = await geminiRes.json();
+    var data = await geminiRes.json();
 
-    if (!geminiRes.ok || !data.candidates?.[0]) {
+    if (!geminiRes.ok || !data.candidates || !data.candidates[0]) {
       return {
         statusCode: 502,
-        body: JSON.stringify({ error: 'Gemini API error', detail: data.error?.message ?? 'No candidates returned' })
+        body: JSON.stringify({ error: 'Gemini API error', detail: data.error ? data.error.message : 'No candidates returned' })
       };
     }
 
-    const raw = data.candidates[0].content.parts[0].text;
-    const cleaned = raw.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
+    var raw = data.candidates[0].content.parts[0].text;
+    var cleaned = raw.replace(/```json|```/g, '').trim();
+    var parsed = JSON.parse(cleaned);
 
     // Handle CALENDAR
-    if (parsed.type === 'CALENDAR' && parsed.details?.calendarType !== 'ask') {
-      const calRes = await fetch(baseUrl + '/.netlify/functions/calendar-add', {
+    if (parsed.type === 'CALENDAR' && parsed.details && parsed.details.calendarType !== 'ask') {
+      var calRes = await fetch(baseUrl + '/.netlify/functions/calendar-add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           summary: parsed.details.what,
-          description: 'Added by ARIA from voice: "' + text + '"',
+          description: 'Added by ARIA: ' + text,
           start: parsed.details.startISO,
           end: parsed.details.endISO,
           calendarType: parsed.details.calendarType,
@@ -134,39 +88,39 @@ Only return the JSON. No extra text.
           attendees: parsed.details.attendees || []
         })
       });
-      const calData = await calRes.json();
+      var calData = await calRes.json();
       if (calData.success) {
-        var calLabel = parsed.details.calendarType === 'work' ? '💼 Work' : '👨‍👩‍👧 Family';
+        var calLabel = parsed.details.calendarType === 'work' ? 'Work' : 'Family';
         var recurringLabel = calData.recurring ? ' (repeating)' : '';
         var attendeeLabel = calData.attendeeCount > 0 ? ' — ' + calData.attendeeCount + ' attendee(s) invited' : '';
-        parsed.confirmation = '📅 Done! "' + parsed.details.what + '" added to your ' + calLabel + ' Calendar' + recurringLabel + attendeeLabel + '.';
+        parsed.confirmation = 'Done! "' + parsed.details.what + '" added to your ' + calLabel + ' Calendar' + recurringLabel + attendeeLabel + '.';
         parsed.calendarLink = calData.eventLink;
       } else {
-        parsed.confirmation = '⚠️ Understood the event but could not add it. Make sure your calendar is connected.';
+        parsed.confirmation = 'Understood the event but could not add it. Make sure your calendar is connected.';
       }
     }
 
-    // Handle REMINDER — schedule via Slack
+    // Handle REMINDER
     if (parsed.type === 'REMINDER' && parsed.details) {
       try {
-        const whenText = (parsed.details.when || '').toLowerCase();
-        const now2 = new Date();
-        const mtNow = new Date(now2.toLocaleString('en-US', { timeZone: 'America/Denver' }));
-        let scheduledTime = null;
+        var whenText = (parsed.details.when || '').toLowerCase();
+        var now2 = new Date();
+        var mtNow = new Date(now2.toLocaleString('en-US', { timeZone: 'America/Denver' }));
+        var scheduledTime = null;
 
-        const inMinutes = whenText.match(/in (\d+) minute/);
-        const inHours = whenText.match(/in (\d+) hour/);
-        const atTime = whenText.match(/(\d+):?(\d*)\s*(am|pm)/i);
-        const tomorrow = whenText.includes('tomorrow');
+        var inMinutes = whenText.match(/in (\d+) minute/);
+        var inHours = whenText.match(/in (\d+) hour/);
+        var atTime = whenText.match(/(\d+):?(\d*)\s*(am|pm)/i);
+        var tomorrow = whenText.includes('tomorrow');
 
         if (inMinutes) {
           scheduledTime = new Date(now2.getTime() + parseInt(inMinutes[1]) * 60000);
         } else if (inHours) {
           scheduledTime = new Date(now2.getTime() + parseInt(inHours[1]) * 3600000);
         } else if (atTime) {
-          let hours = parseInt(atTime[1]);
-          const minutes = parseInt(atTime[2] || '0');
-          const ampm = atTime[3].toLowerCase();
+          var hours = parseInt(atTime[1]);
+          var minutes = parseInt(atTime[2] || '0');
+          var ampm = atTime[3].toLowerCase();
           if (ampm === 'pm' && hours !== 12) hours += 12;
           if (ampm === 'am' && hours === 12) hours = 0;
           scheduledTime = new Date(mtNow);
@@ -175,14 +129,14 @@ Only return the JSON. No extra text.
           if (scheduledTime <= now2) scheduledTime.setDate(scheduledTime.getDate() + 1);
         }
 
-        const slackPayload = {
+        var slackPayload = {
           message: parsed.confirmation,
           emoji: '⏰'
         };
 
         if (scheduledTime && scheduledTime > new Date(now2.getTime() + 60000)) {
           slackPayload.scheduledISO = scheduledTime.toISOString();
-          parsed.confirmation = parsed.confirmation + ' — I\'ll ping you in Slack at the right time ✓';
+          parsed.confirmation = parsed.confirmation + ' — I will ping you in Slack at the right time.';
         }
 
         await fetch(baseUrl + '/.netlify/functions/slack-notify', {
@@ -191,8 +145,8 @@ Only return the JSON. No extra text.
           body: JSON.stringify(slackPayload)
         });
 
-      } catch (err) {
-        console.error('Reminder error:', err);
+      } catch(reminderErr) {
+        console.error('Reminder error:', reminderErr);
       }
     }
 
@@ -202,7 +156,7 @@ Only return the JSON. No extra text.
       body: JSON.stringify(parsed)
     };
 
-  } catch (err) {
+  } catch(err) {
     return {
       statusCode: 500,
       body: JSON.stringify({ error: 'Failed to get response from Gemini' })
