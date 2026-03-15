@@ -129,15 +129,18 @@ Only return the JSON. No extra text.
           description: 'Added by ARIA from voice: "' + text + '"',
           start: parsed.details.startISO,
           end: parsed.details.endISO,
-          calendarType: parsed.details.calendarType
+          calendarType: parsed.details.calendarType,
+          recurrence: parsed.details.recurrence || null,
+          attendees: parsed.details.attendees || []
         })
       });
       const calData = await calRes.json();
-      if (calData.success) {
-        parsed.confirmation = '📅 Done! "' + parsed.details.what + '" added to your ' + (parsed.details.calendarType === 'work' ? '💼 Work' : '👨‍👩‍👧 Family') + ' Calendar.';
+    if (calData.success) {
+        var calLabel = parsed.details.calendarType === 'work' ? '💼 Work' : '👨‍👩‍👧 Family';
+        var recurringLabel = calData.recurring ? ' (repeating)' : '';
+        var attendeeLabel = calData.attendeeCount > 0 ? ' — ' + calData.attendeeCount + ' attendee(s) invited' : '';
+        parsed.confirmation = '📅 Done! "' + parsed.details.what + '" added to your ' + calLabel + ' Calendar' + recurringLabel + attendeeLabel + '.';
         parsed.calendarLink = calData.eventLink;
-      } else {
-        parsed.confirmation = '⚠️ Understood the event but could not add it. Make sure your calendar is connected.';
       }
     }
 
