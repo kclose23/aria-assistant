@@ -3,6 +3,7 @@ var micStatus = document.getElementById('micStatus');
 var transcriptText = document.getElementById('transcriptText');
 var resultBox = document.getElementById('resultBox');
 var resultText = document.getElementById('resultText');
+var resultTag = document.getElementById('resultTag');
 var confirmBtn = document.getElementById('confirmBtn');
 var redoBtn = document.getElementById('redoBtn');
 var emailDraftBox = document.getElementById('emailDraftBox');
@@ -12,8 +13,15 @@ var manualSubmit = document.getElementById('manualSubmit');
 var recognition = null;
 var isListening = false;
 var pendingEmail = null;
-var silenceTimer = null;
 var processingCommand = false;
+
+var tagConfig = {
+  REMINDER:   { label: '⏰ Reminder',  cls: 'reminder' },
+  CALENDAR:   { label: '📅 Calendar',  cls: 'calendar' },
+  EMAIL:      { label: '✉️ Email',     cls: 'email' },
+  TASK:       { label: '✅ Task',      cls: 'task' },
+  BRAIN_DUMP: { label: '🧠 Note',      cls: 'reminder' }
+};
 
 // --- Manual input ---
 manualSubmit.addEventListener('click', function() {
@@ -21,8 +29,7 @@ manualSubmit.addEventListener('click', function() {
   var text = manualInput.value.trim();
   if (!text) return;
   transcriptText.textContent = text;
-  transcriptText.style.color = '#f0f0f0';
-  transcriptText.style.fontStyle = 'normal';
+  transcriptText.classList.add('active');
   manualInput.value = '';
   handleFinalTranscript(text);
 });
@@ -31,7 +38,7 @@ manualInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') manualSubmit.click();
 });
 
-// --- Voice setup ---
+// --- Voice ---
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
@@ -42,8 +49,8 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   recognition.onstart = function() {
     isListening = true;
     micBtn.classList.add('listening');
-    micStatus.textContent = '🔴 Listening... speak now';
-    transcriptText.style.color = '#f0f0f0';
+    micStatus.textContent = 'Listening...';
+    transcriptText.classList.add('active');
     transcriptText.style.fontStyle = 'normal';
   };
 
@@ -56,27 +63,21 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       else interim += t;
     }
     transcriptText.textContent = final || interim;
-    if (final) {
-      var transcript = final.trim();
-      handleFinalTranscript(transcript);
-    }
+    if (final) handleFinalTranscript(final.trim());
   };
 
   recognition.onerror = function(e) {
-    micStatus.textContent = '⚠️ Error: ' + e.error + '. Try again.';
+    micStatus.textContent = 'Error — try again';
     resetMic();
   };
 
-  recognition.onend = function() {
-    resetMic();
-  };
+  recognition.onend = function() { resetMic(); };
 
 } else {
   micBtn.disabled = true;
-  micStatus.textContent = '⚠️ Voice not supported. Please use Chrome.';
+  micStatus.textContent = 'Use Chrome for voice';
 }
 
-// --- Mic button ---
 micBtn.addEventListener('click', function() {
   if (processingCommand) return;
   if (isListening) {
@@ -84,7 +85,7 @@ micBtn.addEventListener('click', function() {
   } else {
     resultBox.classList.add('hidden');
     hideEmailDraft();
-    try { recognition.start(); } catch(e) { console.log(e); }
+    try { recognition.start(); } catch(e) {}
   }
 });
 
@@ -100,7 +101,7 @@ function fullReset() {
   hideEmailDraft();
   resultBox.classList.add('hidden');
   transcriptText.textContent = 'Your words will appear here...';
-  transcriptText.style.color = '#666';
+  transcriptText.classList.remove('active');
   transcriptText.style.fontStyle = 'italic';
   manualInput.value = '';
   manualInput.disabled = false;
@@ -111,7 +112,7 @@ function fullReset() {
 async function handleFinalTranscript(text) {
   if (processingCommand) return;
   processingCommand = true;
-  micStatus.textContent = '🧠 ARIA is thinking...';
+  micStatus.textContent = 'Thinking...';
   resultBox.classList.add('hidden');
   hideEmailDraft();
   manualInput.disabled = true;
@@ -123,7 +124,6 @@ async function handleFinalTranscript(text) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text })
     });
-
     if (!response.ok) throw new Error('Server error: ' + response.status);
     var parsed = await response.json();
     console.log('ARIA response:', JSON.stringify(parsed));
@@ -134,7 +134,9 @@ async function handleFinalTranscript(text) {
       showResult(parsed);
     }
   } catch (err) {
-    resultText.textContent = '⚠️ Something went wrong. Please try again.';
+    resultTag.textContent = '⚠️ Error';
+    resultTag.className = 'result-tag reminder';
+    resultText.textContent = 'Something went wrong. Please try again.';
     resultBox.classList.remove('hidden');
     console.error(err);
   }
@@ -147,15 +149,10 @@ async function handleFinalTranscript(text) {
 
 // --- Show result ---
 function showResult(parsed) {
-  var icons = {
-    REMINDER: '⏰',
-    CALENDAR: '📅',
-    EMAIL: '✉️',
-    TASK: '✅',
-    BRAIN_DUMP: '🧠'
-  };
-  var icon = icons[parsed.type] || '📋';
-  resultText.textContent = icon + ' ' + parsed.confirmation;
+  var config = tagConfig[parsed.type] || { label: '📋 ARIA', cls: 'reminder' };
+  resultTag.textContent = config.label;
+  resultTag.className = 'result-tag ' + config.cls;
+  resultText.textContent = parsed.confirmation;
   resultBox.classList.remove('hidden');
 
   var calendarLinkBox = document.getElementById('calendarLinkBox');
@@ -168,88 +165,62 @@ function showResult(parsed) {
   }
 }
 
-// --- Show email draft ---
+// --- Email draft ---
 function showEmailDraft(parsed) {
   pendingEmail = parsed.details;
-
   emailDraftBox.innerHTML =
-    '<h3>✉️ Email Draft</h3>' +
-    '<div class="email-field">' +
-      '<label>To:</label>' +
-      '<input type="email" id="emailTo" value="' + (parsed.details.recipientEmail || '') + '" placeholder="recipient@email.com" />' +
-    '</div>' +
-    '<div class="email-field">' +
-      '<label>Subject:</label>' +
-      '<input type="text" id="emailSubject" value="' + (parsed.details.subject || '') + '" />' +
-    '</div>' +
-    '<div class="email-field">' +
-      '<label>Message:</label>' +
-      '<textarea id="emailBody" rows="8">' + (parsed.details.emailBody || '') + '</textarea>' +
-    '</div>' +
-    '<p class="email-account">Sending from: ' + (parsed.details.accountType === 'work' ? '💼 Work Gmail' : '👤 Personal Gmail') + '</p>' +
+    '<h3>Email Draft</h3>' +
+    '<div class="email-field"><label>To</label>' +
+    '<input type="email" id="emailTo" value="' + (parsed.details.recipientEmail || '') + '" placeholder="recipient@email.com" /></div>' +
+    '<div class="email-field"><label>Subject</label>' +
+    '<input type="text" id="emailSubject" value="' + (parsed.details.subject || '') + '" /></div>' +
+    '<div class="email-field"><label>Message</label>' +
+    '<textarea id="emailBody" rows="7">' + (parsed.details.emailBody || '') + '</textarea></div>' +
+    '<p class="email-account">Sending from ' + (parsed.details.accountType === 'work' ? 'Work Gmail' : 'Personal Gmail') + '</p>' +
     '<div class="email-actions">' +
-      '<button class="confirm-btn" id="sendEmailBtn">📤 Send Email</button>' +
-      '<button class="redo-btn" id="cancelEmailBtn">❌ Cancel</button>' +
-    '</div>';
+    '<button class="btn-confirm" id="sendEmailBtn">Send Email</button>' +
+    '<button class="btn-redo" id="cancelEmailBtn">Cancel</button></div>';
 
   emailDraftBox.classList.remove('hidden');
-
   document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
   document.getElementById('cancelEmailBtn').addEventListener('click', function() {
     fullReset();
-    transcriptText.textContent = '❌ Email cancelled.';
-    transcriptText.style.color = '#aaa';
-    transcriptText.style.fontStyle = 'normal';
   });
 }
 
-// --- Send email ---
 async function sendEmail() {
   var to = document.getElementById('emailTo').value;
   var subject = document.getElementById('emailSubject').value;
   var emailBody = document.getElementById('emailBody').value;
-
-  if (!to) {
-    alert('Please enter a recipient email address.');
-    return;
-  }
+  if (!to) { alert('Please enter a recipient email.'); return; }
 
   var sendBtn = document.getElementById('sendEmailBtn');
-  sendBtn.textContent = '📤 Sending...';
+  sendBtn.textContent = 'Sending...';
   sendBtn.disabled = true;
 
   try {
     var response = await fetch('/.netlify/functions/gmail-send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: to,
-        subject: subject,
-        emailBody: emailBody,
-        accountType: pendingEmail.accountType
-      })
+      body: JSON.stringify({ to: to, subject: subject, emailBody: emailBody, accountType: pendingEmail.accountType })
     });
-
     var data = await response.json();
-
     if (data.success) {
       fullReset();
-      transcriptText.textContent = '✅ Email sent successfully!';
-      transcriptText.style.color = '#3ecfcf';
-      transcriptText.style.fontStyle = 'normal';
+      transcriptText.textContent = 'Email sent successfully';
+      transcriptText.classList.add('active');
     } else {
-      sendBtn.textContent = '📤 Send Email';
+      sendBtn.textContent = 'Send Email';
       sendBtn.disabled = false;
-      alert('Failed to send: ' + (data.error || 'Unknown error'));
+      alert('Failed: ' + (data.error || 'Unknown error'));
     }
   } catch (err) {
-    sendBtn.textContent = '📤 Send Email';
+    sendBtn.textContent = 'Send Email';
     sendBtn.disabled = false;
-    alert('Error sending email: ' + err.message);
+    alert('Error: ' + err.message);
   }
 }
 
-// --- Hide email draft ---
 function hideEmailDraft() {
   try {
     emailDraftBox.classList.add('hidden');
@@ -258,14 +229,35 @@ function hideEmailDraft() {
   pendingEmail = null;
 }
 
-// --- Confirm / Redo buttons ---
 confirmBtn.addEventListener('click', function() {
   fullReset();
-  transcriptText.textContent = '✅ Got it! ARIA is on it.';
-  transcriptText.style.color = '#3ecfcf';
-  transcriptText.style.fontStyle = 'normal';
+  transcriptText.textContent = 'Got it — ARIA is on it';
+  transcriptText.classList.add('active');
 });
 
-redoBtn.addEventListener('click', function() {
-  fullReset();
+redoBtn.addEventListener('click', fullReset);
+
+// --- Nav ---
+document.getElementById('navCapture').addEventListener('click', function() {
+  setNav('navCapture');
 });
+document.getElementById('navSettings').addEventListener('click', function() {
+  window.location.href = '/connect.html';
+});
+document.getElementById('navTasks').addEventListener('click', function() {
+  transcriptText.textContent = 'Tasks view coming soon...';
+  transcriptText.classList.add('active');
+  setNav('navTasks');
+});
+document.getElementById('navCalendar').addEventListener('click', function() {
+  transcriptText.textContent = 'Calendar view coming soon...';
+  transcriptText.classList.add('active');
+  setNav('navCalendar');
+});
+
+function setNav(activeId) {
+  ['navCapture','navTasks','navCalendar','navSettings'].forEach(function(id) {
+    document.getElementById(id).classList.remove('active');
+  });
+  document.getElementById(activeId).classList.add('active');
+}
