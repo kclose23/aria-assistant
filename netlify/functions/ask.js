@@ -20,17 +20,20 @@ module.exports.handler = async function(event) {
     return { statusCode: 500, body: JSON.stringify({ error: 'Gemini API key not configured' }) };
   }
 
-  const now = new Date();
+const now = new Date();
   const baseUrl = 'https://sprightly-lebkuchen-41b633.netlify.app';
+
+  const currentDate = now.toLocaleDateString('en-US', {timeZone: 'America/Denver', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
+  const currentTime = now.toLocaleTimeString('en-US', {timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit'});
 
   const prompt = `
 You are ARIA, a smart productivity assistant for Kyler, located in Salt Lake City, Utah (Mountain Time, UTC-6, daylight saving active).
-Current date: ${now.toLocaleDateString('en-US', {timeZone: 'America/Denver', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}
-Current time: ${now.toLocaleTimeString('en-US', {timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit'})}
+Current date: ${currentDate}
+Current time: ${currentTime}
 
 The user said: "${text}"
 
-Current time in Mountain Time: ${now.toLocaleTimeString('en-US', {timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit'})}
+Current time in Mountain Time: ${currentTime}
 For REMINDER types, always calculate the exact scheduledISO datetime based on current time. "In 5 minutes" = current time + 5 minutes. "Tomorrow at 2pm" = tomorrow's date at 14:00:00-06:00. ALWAYS include scheduledISO.
 
 Identify the TYPE. Choose ONE of: REMINDER, CALENDAR, EMAIL, TASK, BRAIN_DUMP
