@@ -80,7 +80,17 @@ For EMAIL:
   "confirmation": "✉️ I've drafted an email to Sarah about the proposal. Review it below and confirm to send."
 }
 
-For REMINDER, TASK, BRAIN_DUMP:
+For REMINDER:
+CRITICAL: You MUST calculate and include scheduledISO. Never omit it.
+Steps:
+1. Look at the current date and time provided above
+2. Calculate the exact future datetime the user is asking for
+3. Format it as ISO 8601 with -06:00 offset
+Examples:
+- "in 5 minutes" from 9:15pm = "2026-03-14T21:20:00-06:00"
+- "tomorrow at 2pm" = "2026-03-15T14:00:00-06:00"
+- "Monday at 9am" = "2026-03-16T09:00:00-06:00"
+
 {
   "type": "REMINDER",
   "details": {
@@ -92,7 +102,7 @@ For REMINDER, TASK, BRAIN_DUMP:
   "confirmation": "⏰ Got it! I'll remind you to call the dentist tomorrow at 10am."
 }
 
-Always include scheduledISO for REMINDER type using Mountain Time (-06:00 offset).
+For TASK, BRAIN_DUMP use same format but scheduledISO can be null.
 
 Only return the JSON. No extra text.
 `;
