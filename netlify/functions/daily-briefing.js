@@ -1,3 +1,4 @@
+export const config = { schedule: "0 15 * * *" };
 async function getCalendarEvents(clientId, clientSecret, refreshToken, calendarType) {
   try {
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
