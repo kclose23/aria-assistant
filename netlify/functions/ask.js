@@ -157,13 +157,63 @@ Only return the JSON. No extra text.
       }
     }
 
-// Handle REMINDER — store for scheduled delivery
+// Handle REMINDER — parse time and store for scheduled delivery
     if (parsed.type === 'REMINDER' && parsed.details) {
       try {
-        const scheduledISO = parsed.details.scheduledISO || null;
-        
-        if (scheduledISO) {
+        const whenText = (parsed.details.when || '').toLowerCase();
+        const now = new Date();
+        const mtNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Denver' }));
+        let scheduledTime = null;
+
+        // Parse relative times
+        const inMinutes = whenText.match(/in (\d+) minute/);
+        const inHours = whenText.match(/in (\d+) hour/);
+        const atTime = whenText.match(/at (\d+):?(\d*)\s*(am|pm)?/i);
+        const tomorrow = whenText.includes('tomorrow');
+        const tonight = whenText.includes('tonight');
+
+        if (inMinutes) {
+          scheduledTime = new Date(now.getTime() + parseInt(inMinutes[1]) * 60000);
+        } else if (inHours) {
+          scheduledTime = new Date(now.getTime() + parseInt(inHours[1]) * 3600000);
+        } else if (atTime) {
+          let hours = parseInt(atTime[1]);
+          const minutes = parseInt(atTime[2] || '0');
+          const ampm = atTime[3];
+          if (ampm === 'pm' && hours !== 12) hours += 12;
+          if (ampm === 'am' && hours === 12) hours = 0;
+          scheduledTime = new Date(mtNow);
+          scheduledTime.setHours(hours, minutes, 0, 0);
+          if (tomorrow) scheduledTime.setDate(scheduledTime.getDate() + 1);
+          if (scheduledTime <= now) scheduledTime.setDate(scheduledTime.getDate() + 1);
+        }
+
+        if (scheduledTime) {
           await fetch(baseUrl + '/.netlify/functions/reminder-store', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              what: parsed.details.what,
+              when: parsed.details.when,
+              confirmation: parsed.confirmation,
+              scheduledISO: scheduledTime.toISOString()
+            })
+          });
+          parsed.confirmation = parsed.confirmation + ' — I\'ll ping you in Slack at the right time. ✓';
+        } else {
+          await fetch(baseUrl + '/.netlify/functions/slack-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: parsed.confirmation,
+              emoji: '⏰'
+            })
+          });
+        }
+      } catch (err) {
+        console.error('Reminder error:', err);
+      }
+    }
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
