@@ -14,13 +14,17 @@ async function getCalendarEvents(clientId, clientSecret, refreshToken, calendarT
     const accessToken = tokenData.access_token;
 
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  const mtNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Denver' }));
+const startOfDay = new Date(mtNow.getFullYear(), mtNow.getMonth(), mtNow.getDate(), 0, 0, 0);
+const endOfDay = new Date(mtNow.getFullYear(), mtNow.getMonth(), mtNow.getDate(), 23, 59, 59);
+
+const startISO = startOfDay.toISOString().replace(/\.\d{3}Z$/, '-06:00');
+const endISO = endOfDay.toISOString().replace(/\.\d{3}Z$/, '-06:00');
 
     const calRes = await fetch(
       'https://www.googleapis.com/calendar/v3/calendars/primary/events' +
-      '?timeMin=' + encodeURIComponent(startOfDay.toISOString()) +
-      '&timeMax=' + encodeURIComponent(endOfDay.toISOString()) +
+      '?timeMin=' + encodeURIComponent(startISO) +
+      '&timeMax=' + encodeURIComponent(endISO) +
       '&singleEvents=true&orderBy=startTime',
       {
         headers: { 'Authorization': 'Bearer ' + accessToken }
