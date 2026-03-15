@@ -48,13 +48,21 @@ For CALENDAR:
   "type": "CALENDAR",
   "details": {
     "what": "team standup",
-    "when": "Monday at 9am",
+    "when": "every Monday at 9am",
     "calendarType": "work",
     "startISO": "2026-03-16T09:00:00-06:00",
-    "endISO": "2026-03-16T10:00:00-06:00"
+    "endISO": "2026-03-16T10:00:00-06:00",
+    "recurrence": "every Monday",
+    "attendees": ["john@company.com", "sarah@company.com"]
   },
-  "confirmation": "📅 Got it! Adding team standup to your Work Calendar on Monday at 9am."
+  "confirmation": "📅 Got it! Adding weekly team standup to your Work Calendar every Monday at 9am."
 }
+
+Rules for CALENDAR:
+- recurrence: include if user says "every", "weekly", "daily", "monthly" etc. Otherwise set to null.
+- attendees: array of email addresses mentioned. Otherwise empty array [].
+- If user mentions attendees by name only (no email), still set attendees to [].
+- startISO and endISO always use -06:00 Mountain Time offset.
 
 For EMAIL:
 {
