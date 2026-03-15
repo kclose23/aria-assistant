@@ -130,16 +130,20 @@ Only return the JSON. No extra text.
       }
     }
 
-    // Handle REMINDER — send Slack notification
+// Handle REMINDER — send Slack notification
     if (parsed.type === 'REMINDER' && parsed.details) {
-      await fetch(baseUrl + '/.netlify/functions/slack-notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: parsed.confirmation,
-          emoji: '⏰'
-        })
-      });
+      try {
+        await fetch(baseUrl + '/.netlify/functions/slack-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: parsed.confirmation,
+            emoji: '⏰'
+          })
+        });
+      } catch (slackErr) {
+        console.error('Slack notify failed:', slackErr);
+      }
     }
 
     return {
