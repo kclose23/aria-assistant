@@ -75,10 +75,13 @@ For REMINDER, TASK, BRAIN_DUMP:
   "details": {
     "what": "call dentist",
     "when": "tomorrow at 10am",
-    "who": ""
+    "who": "",
+    "scheduledISO": "2026-03-15T10:00:00-06:00"
   },
   "confirmation": "⏰ Got it! I'll remind you to call the dentist tomorrow at 10am."
 }
+
+Always include scheduledISO for REMINDER type using Mountain Time (-06:00 offset).
 
 Only return the JSON. No extra text.
 `;
