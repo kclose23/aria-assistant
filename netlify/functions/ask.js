@@ -56,7 +56,7 @@ Today is ${new Date().toISOString()}. Return ONLY the JSON object, no markdown, 
           resolve({
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'GENERAL', response: 'Sorry, I had trouble understanding that.' })
+            body: JSON.stringify({ type: 'ERROR', raw: data, error: err.message })
           });
         }
       });
