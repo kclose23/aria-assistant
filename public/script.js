@@ -196,7 +196,12 @@ async function sendEmail() {
     var response = await fetch('/.netlify/functions/gmail-send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: to, subject: subject, emailBody: emailBody, accountType: pendingEmail.accountType })
+      body: JSON.stringify({
+        to: to,
+        subject: subject,
+        emailBody: emailBody,
+        accountType: pendingEmail.accountType
+      })
     });
     var data = await response.json();
     if (data.success) {
