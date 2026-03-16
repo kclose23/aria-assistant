@@ -23,7 +23,6 @@ var tagConfig = {
   BRAIN_DUMP: { label: '🧠 Note',      cls: 'reminder' }
 };
 
-// --- Manual input ---
 manualSubmit.addEventListener('click', function() {
   if (processingCommand) return;
   var text = manualInput.value.trim();
@@ -38,7 +37,6 @@ manualInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') manualSubmit.click();
 });
 
-// --- Voice ---
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
@@ -108,7 +106,6 @@ function fullReset() {
   manualSubmit.disabled = false;
 }
 
-// --- Handle transcript ---
 async function handleFinalTranscript(text) {
   if (processingCommand) return;
   processingCommand = true;
@@ -126,7 +123,6 @@ async function handleFinalTranscript(text) {
     });
     if (!response.ok) throw new Error('Server error: ' + response.status);
     var parsed = await response.json();
-    console.log('ARIA response:', JSON.stringify(parsed));
 
     if (parsed.type === 'EMAIL' && parsed.details) {
       showEmailDraft(parsed);
@@ -147,7 +143,6 @@ async function handleFinalTranscript(text) {
   manualSubmit.disabled = false;
 }
 
-// --- Show result ---
 function showResult(parsed) {
   var config = tagConfig[parsed.type] || { label: '📋 ARIA', cls: 'reminder' };
   resultTag.textContent = config.label;
@@ -165,7 +160,6 @@ function showResult(parsed) {
   }
 }
 
-// --- Email draft ---
 function showEmailDraft(parsed) {
   pendingEmail = parsed.details;
   emailDraftBox.innerHTML =
@@ -237,7 +231,6 @@ confirmBtn.addEventListener('click', function() {
 
 redoBtn.addEventListener('click', fullReset);
 
-// --- Nav ---
 document.getElementById('navCapture').addEventListener('click', function() {
   setNav('navCapture');
 });
