@@ -149,12 +149,17 @@ async function handleFinalTranscript(text) {
   manualSubmit.disabled = false;
 }
 
-function showResult(parsed) {
-  var config = tagConfig[parsed.type] || { label: '📋 ARIA', cls: 'reminder' };
-  resultTag.textContent = config.label;
-  resultTag.className = 'result-tag ' + config.cls;
-  resultText.textContent = parsed.confirmation;
-  resultBox.classList.remove('hidden');
+if (parsed.type === 'REMINDER') {
+    resultText.textContent = 'Reminder: ' + parsed.task + (parsed.datetime ? ' at ' + new Date(parsed.datetime).toLocaleString() : '');
+  } else if (parsed.type === 'CALENDAR') {
+    resultText.textContent = 'Event: ' + parsed.title + (parsed.datetime ? ' at ' + new Date(parsed.datetime).toLocaleString() : '');
+  } else if (parsed.type === 'TASK') {
+    resultText.textContent = 'Task added: ' + parsed.task;
+  } else if (parsed.type === 'SLACK') {
+    resultText.textContent = 'Slack message: ' + parsed.message;
+  } else {
+    resultText.textContent = parsed.response || parsed.confirmation || 'Done!';
+  }
 
   var calendarLinkBox = document.getElementById('calendarLinkBox');
   var calendarLink = document.getElementById('calendarLink');
