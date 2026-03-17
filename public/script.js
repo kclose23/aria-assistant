@@ -14,6 +14,7 @@ var recognition = null;
 var isListening = false;
 var pendingEmail = null;
 var processingCommand = false;
+var lastParsed = null;
 
 var tagConfig = {
   REMINDER:   { label: '⏰ Reminder',  cls: 'reminder' },
@@ -123,6 +124,7 @@ async function handleFinalTranscript(text) {
     });
     if (!response.ok) throw new Error('Server error: ' + response.status);
     var parsed = await response.json();
+    lastParsed = parsed;
 
     if (parsed.type === 'EMAIL') {
       parsed.details = {
@@ -246,7 +248,20 @@ function hideEmailDraft() {
   pendingEmail = null;
 }
 
-confirmBtn.addEventListener('click', function() {
+confirmBtn.addEventListener('click', async function() {
+  if (lastParsed && lastParsed.type === 'REMINDER') {
+    try {
+      await fetch('/.netlify/functions/slack-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: lastParsed.task,
+          emoji: '⏰',
+          scheduledISO: lastParsed.datetime
+        })
+      });
+    } catch(e) { console.error(e); }
+  }
   fullReset();
   transcriptText.textContent = 'Got it — ARIA is on it';
   transcriptText.classList.add('active');
