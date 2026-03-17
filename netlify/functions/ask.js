@@ -21,7 +21,7 @@ For Slack messages: {"type":"SLACK","message":"the message"}
 For tasks: {"type":"TASK","task":"task description"}
 For general questions: {"type":"GENERAL","response":"your response"}
 
-Today is ${new Date().toISOString()}. Return ONLY the JSON object, no markdown, no explanation.`;
+Today is ${new Date().toISOString()}. The user is in Mountain Time (UTC-6). When they give a time like "10:25 PM", treat it as Mountain Time and return the ISO datetime in UTC accordingly.
 
   const requestBody = JSON.stringify({
     contents: [{ parts: [{ text: prompt }] }]
