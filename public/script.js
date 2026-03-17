@@ -124,11 +124,17 @@ async function handleFinalTranscript(text) {
     if (!response.ok) throw new Error('Server error: ' + response.status);
     var parsed = await response.json();
 
-    if (parsed.type === 'EMAIL' && parsed.details) {
-      showEmailDraft(parsed);
-    } else {
-      showResult(parsed);
-    }
+  if (parsed.type === 'EMAIL') {
+  parsed.details = {
+    recipientEmail: parsed.to,
+    subject: parsed.subject,
+    emailBody: parsed.body,
+    accountType: 'personal'
+  };
+  showEmailDraft(parsed);
+} else {
+  showResult(parsed);
+}
   } catch (err) {
     resultTag.textContent = '⚠️ Error';
     resultTag.className = 'result-tag reminder';
