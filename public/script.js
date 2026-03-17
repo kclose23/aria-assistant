@@ -124,17 +124,17 @@ async function handleFinalTranscript(text) {
     if (!response.ok) throw new Error('Server error: ' + response.status);
     var parsed = await response.json();
 
-  if (parsed.type === 'EMAIL') {
-  parsed.details = {
-    recipientEmail: parsed.to,
-    subject: parsed.subject,
-    emailBody: parsed.body,
-    accountType: 'personal'
-  };
-  showEmailDraft(parsed);
-} else {
-  showResult(parsed);
-}
+    if (parsed.type === 'EMAIL') {
+      parsed.details = {
+        recipientEmail: parsed.to,
+        subject: parsed.subject,
+        emailBody: parsed.body,
+        accountType: 'personal'
+      };
+      showEmailDraft(parsed);
+    } else {
+      showResult(parsed);
+    }
   } catch (err) {
     resultTag.textContent = '⚠️ Error';
     resultTag.className = 'result-tag reminder';
@@ -149,7 +149,12 @@ async function handleFinalTranscript(text) {
   manualSubmit.disabled = false;
 }
 
-if (parsed.type === 'REMINDER') {
+function showResult(parsed) {
+  var config = tagConfig[parsed.type] || { label: '📋 ARIA', cls: 'reminder' };
+  resultTag.textContent = config.label;
+  resultTag.className = 'result-tag ' + config.cls;
+
+  if (parsed.type === 'REMINDER') {
     resultText.textContent = 'Reminder: ' + parsed.task + (parsed.datetime ? ' at ' + new Date(parsed.datetime).toLocaleString() : '');
   } else if (parsed.type === 'CALENDAR') {
     resultText.textContent = 'Event: ' + parsed.title + (parsed.datetime ? ' at ' + new Date(parsed.datetime).toLocaleString() : '');
@@ -160,6 +165,8 @@ if (parsed.type === 'REMINDER') {
   } else {
     resultText.textContent = parsed.response || parsed.confirmation || 'Done!';
   }
+
+  resultBox.classList.remove('hidden');
 
   var calendarLinkBox = document.getElementById('calendarLinkBox');
   var calendarLink = document.getElementById('calendarLink');
